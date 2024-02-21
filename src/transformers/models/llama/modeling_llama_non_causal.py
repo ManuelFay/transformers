@@ -272,7 +272,7 @@ class LlamaAttention(nn.Module):
         self.num_key_value_groups = self.num_heads // self.num_key_value_heads
         self.max_position_embeddings = config.max_position_embeddings
         self.rope_theta = config.rope_theta
-        self.is_causal = True
+        self.is_causal = False
 
         if (self.head_dim * self.num_heads) != self.hidden_size:
             raise ValueError(
@@ -812,7 +812,9 @@ class LlamaPreTrainedModel(PreTrainedModel):
 
         if max_cache_len > self.model.causal_mask.shape[-1] or self.device != self.model.causal_mask.device:
             causal_mask = torch.full((max_cache_len, max_cache_len), fill_value=1, device=self.device)
-            self.register_buffer("causal_mask", torch.triu(causal_mask, diagonal=1), persistent=False)
+            # self.register_buffer("causal_mask", torch.triu(causal_mask, diagonal=1), persistent=False)
+            # make non-causal
+            self.register_buffer("causal_mask", causal_mask, persistent=False)
 
         for layer in self.model.layers:
             weights = layer.self_attn.o_proj.weight
@@ -921,7 +923,10 @@ class LlamaModel(LlamaPreTrainedModel):
 
         # register a causal mask to separate causal and padding mask creation. Merging happends in the attention class
         causal_mask = torch.full((config.max_position_embeddings, config.max_position_embeddings), fill_value=1)
-        self.register_buffer("causal_mask", torch.triu(causal_mask, diagonal=1), persistent=False)
+        # self.register_buffer("causal_mask", torch.triu(causal_mask, diagonal=1), persistent=False)
+        # make non-causal
+        self.register_buffer("causal_mask", causal_mask, persistent=False)
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -1063,7 +1068,10 @@ class LlamaModel(LlamaPreTrainedModel):
         # support going beyond cached `max_position_embedding`
         if seq_length > self.causal_mask.shape[-1]:
             causal_mask = torch.full((2 * self.causal_mask.shape[-1], 2 * self.causal_mask.shape[-1]), fill_value=1)
-            self.register_buffer("causal_mask", torch.triu(causal_mask, diagonal=1), persistent=False)
+            # self.register_buffer("causal_mask", torch.triu(causal_mask, diagonal=1), persistent=False)
+            # make non-causal
+            self.register_buffer("causal_mask", causal_mask, persistent=False)
+
 
         # We use the current dtype to avoid any overflows
         causal_mask = self.causal_mask[None, None, :, :].repeat(batch_size, 1, 1, 1).to(dtype) * torch.finfo(dtype).min
@@ -1381,7 +1389,14 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
             else:
                 sequence_lengths = -1
 
-        pooled_logits = logits[torch.arange(batch_size, device=logits.device), sequence_lengths]
+        # Old code for reference
+        # pooled_logits = logits[torch.arange(batch_size, device=logits.device), sequence_lengths]
+
+        # New mean pooling code
+        # create a mask of size logits with 1s before seq length and 0 after
+        mask = torch.arange(logits.shape[1], device=logits.device).expand(batch_size, -1) <= sequence_lengths.unsqueeze(1)
+        # multiply logits with mask and sum over the sequence length, then divide by the sequence length
+        pooled_logits = (logits * mask.unsqueeze(-1)).sum(dim=1) / sequence_lengths.unsqueeze(1).to(logits.dtype)
 
         loss = None
         if labels is not None:
