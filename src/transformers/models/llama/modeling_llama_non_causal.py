@@ -1328,6 +1328,7 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
+        self.pooling_mode = "w_mean"
 
     def get_input_embeddings(self):
         return self.model.embed_tokens
@@ -1390,13 +1391,23 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
                 sequence_lengths = -1
 
         # Old code for reference
-        # pooled_logits = logits[torch.arange(batch_size, device=logits.device), sequence_lengths]
+        pooled_logits_last = logits[torch.arange(batch_size, device=logits.device), sequence_lengths]
 
         # New mean pooling code
         # create a mask of size logits with 1s before seq length and 0 after
         mask = torch.arange(logits.shape[1], device=logits.device).expand(batch_size, -1) <= sequence_lengths.unsqueeze(1)
         # multiply logits with mask and sum over the sequence length, then divide by the sequence length
-        pooled_logits = (logits * mask.unsqueeze(-1)).sum(dim=1) / sequence_lengths.unsqueeze(1).to(logits.dtype)
+        pooled_logits_mean = (logits * mask.unsqueeze(-1)).sum(dim=1) / sequence_lengths.unsqueeze(1).to(logits.dtype)
+
+        # average old and new to upweight last token
+        if self.pooling_mode == "w_mean":
+            pooled_logits = (pooled_logits_last + pooled_logits_mean) / 2
+        elif self.pooling_mode == "last":
+            pooled_logits = pooled_logits_last
+        elif self.pooling_mode == "mean":
+            pooled_logits = pooled_logits_mean
+        else:
+            raise ValueError(f"Pooling mode {self.pooling_mode} not supported.")
 
         loss = None
         if labels is not None:
