@@ -1389,8 +1389,14 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
             else:
                 sequence_lengths = -1
 
+        # Old code for reference
         # pooled_logits = logits[torch.arange(batch_size, device=logits.device), sequence_lengths]
-        pooled_logits = logits[torch.arange(batch_size, device=logits.device), : sequence_lengths + 1 if sequence_lengths>0 else None].mean(dim=1)
+
+        # New mean pooling code
+        # create a mask of size logits with 1s before seq length and 0 after
+        mask = torch.arange(logits.shape[1], device=logits.device).expand(batch_size, -1) <= sequence_lengths.unsqueeze(1)
+        # multiply logits with mask and sum over the sequence length, then divide by the sequence length
+        pooled_logits = (logits * mask.unsqueeze(-1)).sum(dim=1) / sequence_lengths.unsqueeze(1).to(logits.dtype)
 
         loss = None
         if labels is not None:
