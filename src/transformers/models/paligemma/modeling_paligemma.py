@@ -627,6 +627,7 @@ class ColPali(PaliGemmaPreTrainedModel):
         >>> from tqdm import tqdm
         >>> from torch.utils.data import DataLoader
         >>> import requests
+        >>> from PIL import Image
 
 
         >>> model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()

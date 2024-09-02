@@ -95,7 +95,9 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 from transformers import AutoProcessor, ColPali
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-import reque
+import requests 
+from PIL import Image
+
 model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
 processor = AutoProcessor.from_pretrained("vidore/colpali-v1.
 urls = ["https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/bee.jpg?download=true",
