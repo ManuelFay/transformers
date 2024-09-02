@@ -629,6 +629,7 @@ class ColPali(PaliGemmaPreTrainedModel):
         >>> from torch.utils.data import DataLoader
         >>> from datasets import load_dataset
 
+        >>> # To run the below model, make sure PEFT is installed (pip install peft==0.11.1)
         >>> model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
         >>> processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
 
@@ -659,7 +660,7 @@ class ColPali(PaliGemmaPreTrainedModel):
         >>>         embeddings_query = model(**batch_query)
         >>>     qs.extend(list(torch.unbind(embeddings_query.to("cpu"))))
         >>>
-        >>> scores = model.get_late_interaction_score(qs, ds)
+        >>> scores = model.get_late_interaction_scores(qs, ds)
         >>> print(scores.argmax(axis=1))
         ```"""
         outputs = self.model(input_ids=input_ids,

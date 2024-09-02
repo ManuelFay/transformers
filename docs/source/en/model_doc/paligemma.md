@@ -89,6 +89,11 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ### Usage
 
+```bash
+# To run the below model, make sure PEFT is installed
+pip install peft==0.11.1
+```
+
 ```python
 from transformers import AutoProcessor, ColPali
 from tqdm import tqdm
@@ -127,6 +132,6 @@ for batch_query in dataloader:
         embeddings_query = model(**batch_query)
     qs.extend(list(torch.unbind(embeddings_query.to("cpu"))))
 
-scores = model.get_late_interaction_score(qs, ds)
+scores = model.get_late_interaction_scores(qs, ds)
 print(scores.argmax(axis=1))
 ```
