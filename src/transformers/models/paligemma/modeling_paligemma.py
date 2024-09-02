@@ -576,25 +576,61 @@ class ColPali(PaliGemmaPreTrainedModel):
         self.model.vocab_size = model_embeds.num_embeddings
         return model_embeds
 
-    def forward(self, *args, **kwargs):
+    def forward(self,
+                input_ids: torch.LongTensor = None,
+                pixel_values: torch.FloatTensor = None,
+                attention_mask: Optional[torch.Tensor] = None,
+                ):
         """
-        Forward pass through Llama and the linear layer for dimensionality reduction
+        Forward pass through ColPali and the linear layer for dimensionality reduction
 
         Args:
-        - input_ids (torch.LongTensor): The input tokens tensor.
-        - attention_mask (torch.LongTensor): The attention mask tensor.
+        input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
+            Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you provide
+            it.
+
+            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
+            [`PreTrainedTokenizer.__call__`] for details.
+
+            [What are input IDs?](../glossary#input-ids)
+        pixel_values (`torch.FloatTensor` of shape `(batch_size, num_channels, image_size, image_size)):
+            The tensors corresponding to the input images. Pixel values can be obtained using
+            [`AutoImageProcessor`]. See [`SiglipImageProcessor.__call__`] for details ([]`PaliGemmaProcessor`] uses
+            [`SiglipImageProcessor`] for processing images). If none, ColPali will only process text (query embeddings).
+        attention_mask (`torch.Tensor` of shape `(batch_size, sequence_length)`, *optional*):
+            Mask to avoid performing attention on padding token indices. Mask values selected in `[0, 1]`:
+
+            - 1 for tokens that are **not masked**,
+            - 0 for tokens that are **masked**.
+
+            [What are attention masks?](../glossary#attention-mask)
+
+            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
+            [`PreTrainedTokenizer.__call__`] for details.
+
+            If `past_key_values` is used, optionally only the last `decoder_input_ids` have to be input (see
+            `past_key_values`).
+
+            If you want to change padding behavior, you should read [`modeling_opt._prepare_decoder_attention_mask`]
+            and modify to your needs. See diagram 1 in [the paper](https://arxiv.org/abs/1910.13461) for more
+            information on the default strategy.
+
+            - 1 indicates the head is **not masked**,
+            - 0 indicates the head is **masked**.
 
         Returns:
         - torch.Tensor: Embeddings of shape (batch_size, num_tokens, dim)
         """
-        # delete output_hidden_states from kwargs
-        kwargs.pop("output_hidden_states", None)
-        outputs = self.model(*args, output_hidden_states=True, **kwargs)
+        outputs = self.model(input_ids=input_ids,
+                             pixel_values=pixel_values,
+                             attention_mask=attention_mask,
+                             output_hidden_states=True)
         last_hidden_states = outputs.hidden_states[-1]  # (batch_size, sequence_length, hidden_size)
         proj = self.custom_text_proj(last_hidden_states)
         # normalize l2 norm
         proj = proj / proj.norm(dim=-1, keepdim=True)
-        proj = proj * kwargs["attention_mask"].unsqueeze(-1)
+        if attention_mask is not None:
+            proj = proj * attention_mask.unsqueeze(-1)
         return proj
 
     @staticmethod
