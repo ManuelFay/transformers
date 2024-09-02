@@ -29,7 +29,10 @@ from ...tokenization_utils_base import (
     TextInput,
     TruncationStrategy,
 )
-from ...utils import TensorType
+from ...utils import TensorType, is_vision_available
+
+if is_vision_available():
+    from PIL import Image
 
 
 logger = logging.getLogger(__name__)
@@ -306,3 +309,42 @@ class PaliGemmaProcessor(ProcessorMixin):
         tokenizer_input_names = self.tokenizer.model_input_names
         image_processor_input_names = self.image_processor.model_input_names
         return list(dict.fromkeys(tokenizer_input_names + image_processor_input_names))
+
+
+    def process_images_for_colpali(self, images, max_length: int = 50):
+        texts_doc = ["Describe the image."] * len(images)
+        images = [image.convert("RGB") for image in images]
+
+        batch_doc = self(
+            text=texts_doc,
+            images=images,
+            return_tensors="pt",
+            padding="longest",
+            max_length=max_length + self.image_seq_length,
+        )
+        return batch_doc
+
+    def process_queries_for_colpali(self, queries, max_length: int = 50, suffix: str = "default_suffix"):
+        mock_image = Image.new("RGB", (448, 448), (255, 255, 255)).convert("RGB")
+        if suffix == "default_suffix":
+            suffix = "<pad>" * 10
+        texts_query = []
+        for query in queries:
+            query = f"Question: {query}"
+            # add pad tokens
+            query += suffix
+            texts_query.append(query)
+
+        batch_query = self(
+            images=[mock_image] * len(texts_query),
+            # NOTE: the image is not used in batch_query but it is required for calling the processor
+            text=texts_query,
+            return_tensors="pt",
+            padding="longest",
+            max_length=max_length + self.image_seq_length,
+        )
+        del batch_query["pixel_values"]
+
+        batch_query["input_ids"] = batch_query["input_ids"][..., self.image_seq_length:]
+        batch_query["attention_mask"] = batch_query["attention_mask"][..., self.image_seq_length:]
+        return batch_query
