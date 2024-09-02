@@ -624,14 +624,45 @@ class ColPali(PaliGemmaPreTrainedModel):
         Example:
         ```python
         >>> from transformers import AutoProcessor, ColPali
+        >>> from tqdm import tqdm
+        >>> from torch.utils.data import DataLoader
+        >>> import requests
+
 
         >>> model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
         >>> processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
 
-        >>> images = load_from_dataset("vidore/docvqa_test_subsampled")
+        >>> urls = ["https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/bee.jpg?download=true",
+        >>>         "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/elephant.jpg?download=true"]
+        >>> images = [Image.open(requests.get(x, stream=True).raw) for x in image_files]
         >>> queries = ["From which university does James V. Fiorca come ?", "Who is the japanese prime minister?"]
-
-        >>> TODO: Add example
+        >>> dataloader = DataLoader(
+        >>>         images,
+        >>>         batch_size=4,
+        >>>         shuffle=False,
+        >>>         collate_fn=lambda x: processor.process_images_for_colpali(x))
+        >>> ds = []
+        >>> for batch_doc in tqdm(dataloader):
+        >>>     with torch.no_grad():
+        >>>         batch_doc = {k: v.to(model.device) for k, v in batch_doc.items()}
+        >>>         embeddings_doc = model(**batch_doc)
+        >>>     ds.extend(list(torch.unbind(embeddings_doc.to("cpu"))))
+        >>> # run inference - queries
+        >>> dataloader = DataLoader(
+        >>>     queries,
+        >>>     batch_size=4,
+        >>>     shuffle=False,
+        >>>     collate_fn=lambda x: processor.process_queries_for_colpali(x),
+        >>> )
+        >>> qs = []
+        >>> for batch_query in dataloader:
+        >>>     with torch.no_grad():
+        >>>         batch_query = {k: v.to(model.device) for k, v in batch_query.items()}
+        >>>         embeddings_query = model(**batch_query)
+        >>>     qs.extend(list(torch.unbind(embeddings_query.to("cpu"))))
+        >>>
+        >>> scores = model.get_late_interaction_score(qs, ds)
+        >>> print(scores.argmax(axis=1))
         ```"""
         outputs = self.model(input_ids=input_ids,
                              pixel_values=pixel_values,

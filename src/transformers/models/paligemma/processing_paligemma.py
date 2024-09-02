@@ -311,7 +311,15 @@ class PaliGemmaProcessor(ProcessorMixin):
         return list(dict.fromkeys(tokenizer_input_names + image_processor_input_names))
 
 
-    def process_images_for_colpali(self, images, max_length: int = 50):
+    def process_images_for_colpali(self, images: List["PIL.Image"]) -> BatchFeature:
+        """
+        Process images for ColPaLi
+
+        Args:
+            images: List of PIL images
+        Returns:
+            BatchFeature
+        """
         texts_doc = ["Describe the image."] * len(images)
         images = [image.convert("RGB") for image in images]
 
@@ -320,11 +328,23 @@ class PaliGemmaProcessor(ProcessorMixin):
             images=images,
             return_tensors="pt",
             padding="longest",
-            max_length=max_length + self.image_seq_length,
         )
         return batch_doc
 
-    def process_queries_for_colpali(self, queries, max_length: int = 50, suffix: str = "default_suffix"):
+    def process_queries_for_colpali(self,
+                                    queries: List[str],
+                                    max_length: int = 50,
+                                    suffix: str = "default_suffix") -> BatchFeature:
+        """
+        Process queries for ColPaLi
+
+        Args:
+        - queries: List of queries
+        - max_length: Maximum length of the query
+        - suffix: Suffix to be added to the query
+        Returns:
+        - BatchFeature
+        """
         mock_image = Image.new("RGB", (448, 448), (255, 255, 255)).convert("RGB")
         if suffix == "default_suffix":
             suffix = "<pad>" * 10
