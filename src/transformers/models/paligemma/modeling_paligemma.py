@@ -627,16 +627,12 @@ class ColPali(PaliGemmaPreTrainedModel):
         >>> from tqdm import tqdm
         >>> import torch
         >>> from torch.utils.data import DataLoader
-        >>> import requests
-        >>> from PIL import Image
-
+        >>> from datasets import load_dataset
 
         >>> model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
         >>> processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
 
-        >>> urls = ["https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/bee.jpg?download=true",
-        >>>         "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/elephant.jpg?download=true"]
-        >>> images = [Image.open(requests.get(x, stream=True).raw) for x in urls]
+        >>> images =  load_dataset("vidore/docvqa_test_subsampled", split="test")["image"]
         >>> queries = ["From which university does James V. Fiorca come ?", "Who is the japanese prime minister?"]
         >>> dataloader = DataLoader(
         >>>         images,
