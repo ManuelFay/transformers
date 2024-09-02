@@ -674,14 +674,13 @@ class ColPali(PaliGemmaPreTrainedModel):
             proj = proj * attention_mask.unsqueeze(-1)
         return proj
 
-    @staticmethod
-    def get_late_interaction_scores(qs: List[torch.Tensor], ps: List[torch.Tensor], batch_size: int =128) -> torch.Tensor:
+    def get_late_interaction_scores(self, qs: List[torch.Tensor], ps: List[torch.Tensor], batch_size: int = 128) -> torch.Tensor:
         """
         Compute the late interaction scores between queries and passages.
         Args:
         - qs (List[torch.Tensor]): List of query embeddings.
         - ps (List[torch.Tensor]): List of passage embeddings.
-        - batch_size (int): Batch size for computing scores.
+        - batch_size (int): Max batch size for computing scores.
         Returns:
         - torch.Tensor: Late interaction scores of shape (len(qs), len(ps)).
         """
@@ -689,12 +688,12 @@ class ColPali(PaliGemmaPreTrainedModel):
         for i in range(0, len(qs), batch_size):
             scores_batch = []
             qs_batch = torch.nn.utils.rnn.pad_sequence(qs[i : i + batch_size], batch_first=True, padding_value=0).to(
-                "cuda"
+                self.device
             )
             for j in range(0, len(ps), batch_size):
                 ps_batch = torch.nn.utils.rnn.pad_sequence(
                     ps[j : j + batch_size], batch_first=True, padding_value=0
-                ).to("cuda")
+                ).to(self.device)
                 scores_batch.append(torch.einsum("bnd,csd->bcns", qs_batch, ps_batch).max(dim=3)[0].sum(dim=2))
             scores_batch = torch.cat(scores_batch, dim=1).cpu()
             scores.append(scores_batch)
