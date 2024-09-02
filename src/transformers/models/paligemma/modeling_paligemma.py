@@ -620,7 +620,19 @@ class ColPali(PaliGemmaPreTrainedModel):
 
         Returns:
         - torch.Tensor: Embeddings of shape (batch_size, num_tokens, dim)
-        """
+
+        Example:
+        ```python
+        >>> from transformers import AutoProcessor, ColPali
+
+        >>> model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
+        >>> processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
+
+        >>> images = load_from_dataset("vidore/docvqa_test_subsampled")
+        >>> queries = ["From which university does James V. Fiorca come ?", "Who is the japanese prime minister?"]
+
+        >>> TODO: Add example
+        ```"""
         outputs = self.model(input_ids=input_ids,
                              pixel_values=pixel_values,
                              attention_mask=attention_mask,
