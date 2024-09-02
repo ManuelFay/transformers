@@ -636,7 +636,7 @@ class ColPali(PaliGemmaPreTrainedModel):
 
         >>> urls = ["https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/bee.jpg?download=true",
         >>>         "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/elephant.jpg?download=true"]
-        >>> images = [Image.open(requests.get(x, stream=True).raw) for x in image_files]
+        >>> images = [Image.open(requests.get(x, stream=True).raw) for x in urls]
         >>> queries = ["From which university does James V. Fiorca come ?", "Who is the japanese prime minister?"]
         >>> dataloader = DataLoader(
         >>>         images,

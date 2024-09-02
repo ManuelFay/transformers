@@ -65,8 +65,6 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 - Demo notebooks on how to fine-tune PaliGemma on a custom dataset (receipt image -> JSON) along with inference can be found [here](https://github.com/NielsRogge/Transformers-Tutorials/tree/master/PaliGemma). 🌎
 
 
-# TODO: Add ColPali examples here
-
 ## PaliGemmaConfig
 
 [[autodoc]] PaliGemmaConfig
@@ -105,7 +103,7 @@ processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
 
 urls = ["https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/bee.jpg?download=true",
         "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/elephant.jpg?download=true"]
-images = [Image.open(requests.get(x, stream=True).raw) for x in image_files]
+images = [Image.open(requests.get(x, stream=True).raw) for x in urls]
 queries = ["From which university does James V. Fiorca come ?", "Who is the japanese prime minister?"]
 dataloader = DataLoader(
         images,
