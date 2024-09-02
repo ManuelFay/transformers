@@ -95,11 +95,14 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 from transformers import AutoProcessor, ColPali
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-import requests 
+import requests
 from PIL import Image
+import torch
+
 
 model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
-processor = AutoProcessor.from_pretrained("vidore/colpali-v1.
+processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
+
 urls = ["https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/bee.jpg?download=true",
         "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/elephant.jpg?download=true"]
 images = [Image.open(requests.get(x, stream=True).raw) for x in image_files]
@@ -128,7 +131,7 @@ for batch_query in dataloader:
         batch_query = {k: v.to(model.device) for k, v in batch_query.items()}
         embeddings_query = model(**batch_query)
     qs.extend(list(torch.unbind(embeddings_query.to("cpu"))))
-scores = model.get_late_interaction_score(qs, ds)
 
+scores = model.get_late_interaction_score(qs, ds)
 print(scores.argmax(axis=1))
 ```

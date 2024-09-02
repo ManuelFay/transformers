@@ -625,6 +625,7 @@ class ColPali(PaliGemmaPreTrainedModel):
         ```python
         >>> from transformers import AutoProcessor, ColPali
         >>> from tqdm import tqdm
+        >>> import torch
         >>> from torch.utils.data import DataLoader
         >>> import requests
         >>> from PIL import Image
