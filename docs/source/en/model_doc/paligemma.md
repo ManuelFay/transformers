@@ -64,6 +64,9 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 - Demo notebooks on how to fine-tune PaliGemma for VQA with the Trainer API along with inference can be found [here](https://github.com/huggingface/notebooks/tree/main/examples/paligemma).
 - Demo notebooks on how to fine-tune PaliGemma on a custom dataset (receipt image -> JSON) along with inference can be found [here](https://github.com/NielsRogge/Transformers-Tutorials/tree/master/PaliGemma). 🌎
 
+
+# TODO: Add ColPali examples here
+
 ## PaliGemmaConfig
 
 [[autodoc]] PaliGemmaConfig
@@ -76,3 +79,10 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 [[autodoc]] PaliGemmaForConditionalGeneration
     - forward
+
+
+## ColPali
+
+[[autodoc]] ColPali
+    - forward
+    - get_late_interaction_scores
