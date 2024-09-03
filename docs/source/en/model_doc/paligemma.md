@@ -64,7 +64,6 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 - Demo notebooks on how to fine-tune PaliGemma for VQA with the Trainer API along with inference can be found [here](https://github.com/huggingface/notebooks/tree/main/examples/paligemma).
 - Demo notebooks on how to fine-tune PaliGemma on a custom dataset (receipt image -> JSON) along with inference can be found [here](https://github.com/NielsRogge/Transformers-Tutorials/tree/master/PaliGemma). 🌎
 
-
 ## PaliGemmaConfig
 
 [[autodoc]] PaliGemmaConfig
@@ -83,6 +82,14 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## ColPali
 
+ColPali is a PaliGemma variant to produce multi-vector representations from images.
+It was introduced in the paper [ColPali: Efficient Document Retrieval with Vision Language Models](https://arxiv.org/abs/2407.01449).
+
+### Resources
+- A blog post detailing ColPali, a vision retrieval model, can be found [here](https://huggingface.co/blog/manu/colpali). 🌎
+- The training codebase for ColPali can be found [here](https://github.com/illuin-tech/colpali). 🌎
+
+
 [[autodoc]] ColPali
     - forward
     - get_late_interaction_scores
@@ -90,7 +97,7 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 ### Usage
 
 ```bash
-# To run the below model, make sure PEFT is installed
+# To run the adapter model in the example below, make sure PEFT is installed
 pip install peft==0.11.1
 ```
 
