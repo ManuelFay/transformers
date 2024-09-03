@@ -2875,6 +2875,7 @@ else:
     _import_structure["models.paligemma"].extend(
         [
             "PaliGemmaForConditionalGeneration",
+            "ColPali",
             "PaliGemmaPreTrainedModel",
             "PaliGemmaProcessor",
         ]
@@ -7375,6 +7376,7 @@ if TYPE_CHECKING:
         )
         from .models.paligemma import (
             PaliGemmaForConditionalGeneration,
+            ColPali,
             PaliGemmaPreTrainedModel,
             PaliGemmaProcessor,
         )

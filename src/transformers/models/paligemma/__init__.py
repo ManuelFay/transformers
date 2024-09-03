@@ -28,6 +28,7 @@ else:
     _import_structure["modeling_paligemma"] = [
         "PaliGemmaForConditionalGeneration",
         "PaliGemmaPreTrainedModel",
+        "ColPali",
     ]
     _import_structure["processing_paligemma"] = ["PaliGemmaProcessor"]
 
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
         from .modeling_paligemma import (
             PaliGemmaForConditionalGeneration,
             PaliGemmaPreTrainedModel,
+            ColPali,
         )
         from .processing_paligemma import PaliGemmaProcessor
 

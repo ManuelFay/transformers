@@ -526,3 +526,177 @@ class PaliGemmaForConditionalGeneration(PaliGemmaPreTrainedModel):
             model_inputs["pixel_values"] = pixel_values
 
         return model_inputs
+
+
+class ColPali(PaliGemmaPreTrainedModel):
+    def __init__(self, config):
+        super(ColPali, self).__init__(config=config)
+        model: PaliGemmaForConditionalGeneration = PaliGemmaForConditionalGeneration(config)
+        if model.language_model._tied_weights_keys is not None:
+            self._tied_weights_keys = [f"model.language_model.{k}" for k in model.language_model._tied_weights_keys]
+        self.model = model
+        self.dim = 128
+        self.custom_text_proj = nn.Linear(self.model.config.text_config.hidden_size, self.dim)
+        self.main_input_name = "doc_input_ids"
+        self.post_init()
+
+    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.get_input_embeddings with Llava->PaliGemma
+    def get_input_embeddings(self):
+        return self.model.language_model.get_input_embeddings()
+
+    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.set_input_embeddings with Llava->PaliGemma
+    def set_input_embeddings(self, value):
+        self.model.language_model.set_input_embeddings(value)
+
+    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.get_output_embeddings with Llava->PaliGemma
+    def get_output_embeddings(self):
+        return self.model.language_model.get_output_embeddings()
+
+    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.set_output_embeddings with Llava->PaliGemma
+    def set_output_embeddings(self, new_embeddings):
+        self.model.language_model.set_output_embeddings(new_embeddings)
+
+    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.set_decoder with Llava->PaliGemma
+    def set_decoder(self, decoder):
+        self.model.language_model.set_decoder(decoder)
+
+    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.get_decoder with Llava->PaliGemma
+    def get_decoder(self):
+        return self.model.language_model.get_decoder()
+
+    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.tie_weights with Llava->PaliGemma
+    def tie_weights(self):
+        return self.model.language_model.tie_weights()
+
+    def resize_token_embeddings(self, new_num_tokens: Optional[int] = None, pad_to_multiple_of=None) -> nn.Embedding:
+        model_embeds = self.model.language_model.resize_token_embeddings(new_num_tokens, pad_to_multiple_of)
+        # update vocab size
+        self.config.text_config.vocab_size = model_embeds.num_embeddings
+        self.config.vocab_size = model_embeds.num_embeddings
+        self.model.vocab_size = model_embeds.num_embeddings
+        return model_embeds
+
+    def forward(self,
+                input_ids: torch.LongTensor = None,
+                pixel_values: torch.FloatTensor = None,
+                attention_mask: Optional[torch.Tensor] = None,
+                ):
+        """
+        Forward pass through ColPali and the linear layer for dimensionality reduction
+
+        Args:
+        input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
+            Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you provide
+            it.
+
+            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
+            [`PreTrainedTokenizer.__call__`] for details.
+
+            [What are input IDs?](../glossary#input-ids)
+        pixel_values (`torch.FloatTensor` of shape `(batch_size, num_channels, image_size, image_size)):
+            The tensors corresponding to the input images. Pixel values can be obtained using
+            [`AutoImageProcessor`]. See [`SiglipImageProcessor.__call__`] for details ([]`PaliGemmaProcessor`] uses
+            [`SiglipImageProcessor`] for processing images). If none, ColPali will only process text (query embeddings).
+        attention_mask (`torch.Tensor` of shape `(batch_size, sequence_length)`, *optional*):
+            Mask to avoid performing attention on padding token indices. Mask values selected in `[0, 1]`:
+
+            - 1 for tokens that are **not masked**,
+            - 0 for tokens that are **masked**.
+
+            [What are attention masks?](../glossary#attention-mask)
+
+            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
+            [`PreTrainedTokenizer.__call__`] for details.
+
+            If `past_key_values` is used, optionally only the last `decoder_input_ids` have to be input (see
+            `past_key_values`).
+
+            If you want to change padding behavior, you should read [`modeling_opt._prepare_decoder_attention_mask`]
+            and modify to your needs. See diagram 1 in [the paper](https://arxiv.org/abs/1910.13461) for more
+            information on the default strategy.
+
+            - 1 indicates the head is **not masked**,
+            - 0 indicates the head is **masked**.
+
+        Returns:
+        - torch.Tensor: Embeddings of shape (batch_size, num_tokens, dim)
+
+        Example:
+        ```python
+        >>> from transformers import AutoProcessor, ColPali
+        >>> from tqdm import tqdm
+        >>> import torch
+        >>> from torch.utils.data import DataLoader
+        >>> from datasets import load_dataset
+
+        >>> # To run the below model, make sure PEFT is installed (pip install peft==0.11.1)
+        >>> model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
+        >>> processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
+
+        >>> images =  load_dataset("vidore/docvqa_test_subsampled", split="test")["image"]
+        >>> queries = ["From which university does James V. Fiorca come ?", "Who is the japanese prime minister?"]
+        >>> dataloader = DataLoader(
+        >>>         images,
+        >>>         batch_size=4,
+        >>>         shuffle=False,
+        >>>         collate_fn=lambda x: processor.process_images_for_colpali(x))
+        >>> ds = []
+        >>> for batch_doc in tqdm(dataloader):
+        >>>     with torch.no_grad():
+        >>>         batch_doc = {k: v.to(model.device) for k, v in batch_doc.items()}
+        >>>         embeddings_doc = model(**batch_doc)
+        >>>     ds.extend(list(torch.unbind(embeddings_doc.to("cpu"))))
+        >>> # run inference - queries
+        >>> dataloader = DataLoader(
+        >>>     queries,
+        >>>     batch_size=4,
+        >>>     shuffle=False,
+        >>>     collate_fn=lambda x: processor.process_queries_for_colpali(x),
+        >>> )
+        >>> qs = []
+        >>> for batch_query in dataloader:
+        >>>     with torch.no_grad():
+        >>>         batch_query = {k: v.to(model.device) for k, v in batch_query.items()}
+        >>>         embeddings_query = model(**batch_query)
+        >>>     qs.extend(list(torch.unbind(embeddings_query.to("cpu"))))
+        >>>
+        >>> scores = model.get_late_interaction_scores(qs, ds)
+        >>> print(scores.argmax(axis=1))
+        ```"""
+        outputs = self.model(input_ids=input_ids,
+                             pixel_values=pixel_values,
+                             attention_mask=attention_mask,
+                             output_hidden_states=True)
+        last_hidden_states = outputs.hidden_states[-1]  # (batch_size, sequence_length, hidden_size)
+        proj = self.custom_text_proj(last_hidden_states)
+        # normalize l2 norm
+        proj = proj / proj.norm(dim=-1, keepdim=True)
+        if attention_mask is not None:
+            proj = proj * attention_mask.unsqueeze(-1)
+        return proj
+
+    def get_late_interaction_scores(self, qs: List[torch.Tensor], ps: List[torch.Tensor], batch_size: int = 128) -> torch.Tensor:
+        """
+        Compute the late interaction scores between queries and passages.
+        Args:
+        - qs (List[torch.Tensor]): List of query embeddings.
+        - ps (List[torch.Tensor]): List of passage embeddings.
+        - batch_size (int): Max batch size for computing scores.
+        Returns:
+        - torch.Tensor: Late interaction scores of shape (len(qs), len(ps)).
+        """
+        scores = []
+        for i in range(0, len(qs), batch_size):
+            scores_batch = []
+            qs_batch = torch.nn.utils.rnn.pad_sequence(qs[i : i + batch_size], batch_first=True, padding_value=0).to(
+                self.device
+            )
+            for j in range(0, len(ps), batch_size):
+                ps_batch = torch.nn.utils.rnn.pad_sequence(
+                    ps[j : j + batch_size], batch_first=True, padding_value=0
+                ).to(self.device)
+                scores_batch.append(torch.einsum("bnd,csd->bcns", qs_batch, ps_batch).max(dim=3)[0].sum(dim=2))
+            scores_batch = torch.cat(scores_batch, dim=1).cpu()
+            scores.append(scores_batch)
+        scores = torch.cat(scores, dim=0)
+        return scores

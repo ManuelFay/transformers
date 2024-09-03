@@ -71,8 +71,74 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 ## PaliGemmaProcessor
 
 [[autodoc]] PaliGemmaProcessor
+    - process_images_for_colpali
+    - process_queries_for_colpali
 
 ## PaliGemmaForConditionalGeneration
 
 [[autodoc]] PaliGemmaForConditionalGeneration
     - forward
+
+
+## ColPali
+
+ColPali is a PaliGemma variant to produce multi-vector representations from images.
+It was introduced in the paper [ColPali: Efficient Document Retrieval with Vision Language Models](https://arxiv.org/abs/2407.01449).
+
+### Resources
+- A blog post detailing ColPali, a vision retrieval model, can be found [here](https://huggingface.co/blog/manu/colpali). 🌎
+- The training codebase for ColPali can be found [here](https://github.com/illuin-tech/colpali). 🌎
+
+
+[[autodoc]] ColPali
+    - forward
+    - get_late_interaction_scores
+
+### Usage
+
+```bash
+# To run the adapter model in the example below, make sure PEFT is installed
+pip install peft==0.11.1
+```
+
+```python
+from transformers import AutoProcessor, ColPali
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+from datasets import load_dataset
+import torch
+
+
+model = ColPali.from_pretrained("vidore/colpali-v1.2", torch_dtype=torch.bfloat16, device_map="cuda").eval()
+processor = AutoProcessor.from_pretrained("vidore/colpali-v1.2")
+
+images =  load_dataset("vidore/docvqa_test_subsampled", split="test")["image"]
+queries = ["From which university does James V. Fiorca come ?", "Who is the japanese prime minister?"]
+dataloader = DataLoader(
+        images,
+        batch_size=4,
+        shuffle=False,
+        collate_fn=lambda x: processor.process_images_for_colpali(x))
+ds = []
+for batch_doc in tqdm(dataloader):
+    with torch.no_grad():
+        batch_doc = {k: v.to(model.device) for k, v in batch_doc.items()}
+        embeddings_doc = model(**batch_doc)
+    ds.extend(list(torch.unbind(embeddings_doc.to("cpu"))))
+# run inference - queries
+dataloader = DataLoader(
+    queries,
+    batch_size=4,
+    shuffle=False,
+    collate_fn=lambda x: processor.process_queries_for_colpali(x),
+)
+qs = []
+for batch_query in dataloader:
+    with torch.no_grad():
+        batch_query = {k: v.to(model.device) for k, v in batch_query.items()}
+        embeddings_query = model(**batch_query)
+    qs.extend(list(torch.unbind(embeddings_query.to("cpu"))))
+
+scores = model.get_late_interaction_scores(qs, ds)
+print(scores.argmax(axis=1))
+```
